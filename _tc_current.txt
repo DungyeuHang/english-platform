@@ -1,8 +1,0 @@
-
-> english-platform@0.1.0 typecheck
-> tsc --noEmit
-
-src/features/admin/lib/userRepository.ts(114,1): error TS1128: Declaration or statement expected.
-src/features/admin/pages/UserManagementPage.tsx(18,3): error TS1137: Expression or comma expected.
-src/features/admin/pages/UserManagementPage.tsx(326,1): error TS1128: Declaration or statement expected.
-src/shared/components/ProtectedRoute.tsx(35,21): error TS1005: '}' expected.
