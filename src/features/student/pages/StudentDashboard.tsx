@@ -1,4 +1,8 @@
 import { Card, Badge, Avatar } from '@/shared/components';
+import { useAuth } from '@/features/auth/AuthContext';
+import { useState, useEffect } from 'react';
+import { fetchStudentClasses } from '@/features/admin/lib/classRepository';
+import type { ClassProfile } from '@/shared/utils/types';
 
 const mockAssignments = [
   { id: '1', title: 'Grammar Quiz #3', subject: 'Grammar', dueDate: '2024-12-20', progress: 75, status: 'in-progress' as const },
@@ -13,6 +17,21 @@ const recentActivity = [
 ];
 
 export function StudentDashboard() {
+  const { user } = useAuth();
+  const [myClasses, setMyClasses] = useState<ClassProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      setIsLoading(true);
+      fetchStudentClasses(user.uid)
+        .then(setMyClasses)
+        .catch(console.error)
+        .finally(() => setIsLoading(false));
+    }
+  }, [user]);
+
+
   const stats = [
     { label: 'XP', value: '2,450', icon: '⭐', color: 'text-gold-500' },
     { label: 'Level', value: '12', icon: '🎯', color: 'text-brand-600' },
@@ -39,6 +58,26 @@ export function StudentDashboard() {
           </Card>
         ))}
       </div>
+
+      {/* My Classes */}
+      <div>
+        <h3 className="text-lg font-semibold text-ink mb-4">My Classes</h3>
+        {isLoading ? (
+          <p>Loading classes...</p>
+        ) : myClasses.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {myClasses.map((c) => (
+              <Card key={c.id}>
+                <p className="font-bold text-ink">{c.name}</p>
+                <p className="text-sm text-ink-soft">{c.code}</p>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p className="text-ink-soft">You are not enrolled in any classes yet.</p>
+        )}
+      </div>
+
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Assignments */}

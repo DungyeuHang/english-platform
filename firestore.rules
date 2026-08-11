@@ -1,0 +1,71 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function getUserData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isRole(role) {
+      return isSignedIn() && getUserData(request.auth.uid).role == role;
+    }
+
+    function isAdmin() {
+      return isRole('admin');
+    }
+
+    function isTeacher() {
+      return isRole('teacher');
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Rules for 'users' collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create, delete: if isAdmin();
+      // Admins can update anything.
+      // Users can update their own profile, but NOT their role, status, or classIds.
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.status == resource.data.status &&
+        request.resource.data.classIds == resource.data.classIds
+      );
+    }
+
+    // Rules for 'classes' collection
+    match /classes/{classId} {
+      // Admins, the assigned teacher, or an enrolled student can read.
+      allow read: if isAdmin() ||
+                     (isTeacher() && resource.data.teacherId == request.auth.uid) ||
+                     (getUserData(request.auth.uid).classIds.includes(classId));
+
+      allow create, delete: if isAdmin();
+
+      // Admins can update anything.
+      // Teachers can update their own classes, but cannot re-assign the teacher.
+      allow update: if isAdmin() ||
+                     (isTeacher() && resource.data.teacherId == request.auth.uid && request.resource.data.teacherId == resource.data.teacherId);
+    }
+
+    // Rules for 'classMemberships' collection
+    match /classMemberships/{membershipId} {
+      function isAssignedTeacherForClass(classId) {
+        let classDoc = get(/databases/$(database)/documents/classes/$(classId));
+        return isTeacher() && classDoc.data.teacherId == request.auth.uid;
+      }
+
+      allow read: if isAdmin() || isAssignedTeacherForClass(resource.data.classId) || isOwner(resource.data.studentId);
+      allow create, delete: if isAdmin() || isAssignedTeacherForClass(request.resource.data.classId);
+    }
+  }
+}

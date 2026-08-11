@@ -178,6 +178,17 @@ export async function createUserProfile(data: {
   return fetchUserProfile(data.uid);
 }
 
+export async function updateUserClassIds(uid: string, classIds: string[]): Promise<void> {
+  const firestore = getFirestore();
+  if (!firestore) return;
+
+  const userRef = doc(firestore, USERS_COLLECTION, uid);
+  await updateDoc(userRef, {
+    classIds,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 function docToUserProfile(snap: {
   id: string;
   data: () => DocumentData;
@@ -194,5 +205,6 @@ function docToUserProfile(snap: {
     photoURL: data.photoURL || null,
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : null,
     updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : null,
+    classIds: data.classIds || [],
   };
 }

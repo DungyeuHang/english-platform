@@ -1,5 +1,5 @@
-import { ComingSoon } from '@/shared/components/ComingSoon';
+import { AdminDashboard } from './AdminDashboard';
 
 export function AdminPage() {
-  return <ComingSoon title="Admin workspace" />;
+  return <AdminDashboard />;
 }

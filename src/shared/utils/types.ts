@@ -11,6 +11,7 @@ export interface UserProfile {
   photoURL: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
+  classIds?: string[];
 }
 
 export interface StudentProfile {
@@ -40,4 +41,27 @@ export interface AdminProfile {
   displayName: string | null;
   role: 'admin';
   centerId?: string;
+}
+
+export type ClassStatus = 'active' | 'archived';
+
+export interface ClassProfile {
+  id: string;
+  name: string;
+  code: string;
+  description: string | null;
+  teacherId: string | null;
+  status: ClassStatus;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+  // Denormalized/computed fields for UI
+  studentCount?: number;
+  teacher?: UserProfile | null;
+}
+
+export interface ClassMembership {
+  id: string;
+  classId: string;
+  studentId: string;
+  joinedAt: Date | null;
 }
