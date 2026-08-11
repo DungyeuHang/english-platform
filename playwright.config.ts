@@ -17,7 +17,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
+    command: 'cmd /c "set PATH=D:\\GitHub\\english-platform\\.tools\\node-v22.23.2-win-x64;%PATH% && npm run dev"',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
 const navItems = [
   { to: '/', label: 'Home' },
@@ -9,6 +9,13 @@ const navItems = [
 ] as const;
 
 export function RootLayout() {
+  const location = useLocation();
+  const isAuthPage = location.pathname === '/auth';
+
+  if (isAuthPage) {
+    return <Outlet />;
+  }
+
   return (
     <div className="min-h-screen">
       <header className="border-b border-line bg-surface">
