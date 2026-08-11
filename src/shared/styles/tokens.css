@@ -1,0 +1,51 @@
+/*
+ * Design tokens for the English Platform.
+ *
+ * These CSS custom properties are the single source of truth for the
+ * visual language. Tailwind's `theme.extend` in tailwind.config.js maps
+ * the most important ones to utility classes (brand, ink, paper, ...).
+ *
+ * The `.dark` scope enables dark mode via the `dark` class on <html>.
+ */
+:root {
+  /* Colors */
+  --color-ink: #173225;
+  --color-ink-soft: #426659;
+  --color-ink-light: #6b8f7d;
+  --color-brand: #158f77;
+  --color-brand-strong: #0d6a58;
+  --color-brand-light: #2ab69d;
+  --color-gold: #f2b84b;
+  --color-gold-light: #f8d077;
+  --color-paper: #fffdfa;
+  --color-surface: #ffffff;
+  --color-line: rgba(23, 50, 37, 0.14);
+  --color-danger: #b9483c;
+  --color-success: #1f7a5b;
+  --color-info: #245d8f;
+
+  /* Radii */
+  --radius-card: 12px;
+  --radius-large: 16px;
+
+  /* Shadows */
+  --shadow-card: 0 20px 50px rgba(15, 39, 28, 0.14);
+  --shadow-soft: 0 8px 24px rgba(15, 39, 28, 0.08);
+
+  /* Motion */
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Typography */
+  --font-sans: 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+
+.dark {
+  --color-ink: #e8f5ef;
+  --color-ink-soft: #b7d4c6;
+  --color-ink-light: #8fb3a2;
+  --color-paper: #0f1f18;
+  --color-surface: #162a21;
+  --color-line: rgba(232, 245, 239, 0.14);
+  --color-brand: #3fbca0;
+  --color-brand-strong: #2ab69d;
+}
