@@ -66,3 +66,8 @@ no system-wide Node installation is required. Invoke it via its full path, e.g.:
 $env:PATH = "$PWD\.tools\node-v22.23.2-win-x64;$env:PATH"
 npm run dev
 ```
+
+#### TEST
+```powershell 
+$env:PATH = 'D:\GitHub\english-platform\.tools\node-v22.23.2-win-x64;' + $env:PATH; Set-Location 'D:\GitHub\english-platform'; & 'D:\GitHub\english-platform\.tools\node-v22.23.2-win-x64\npm.cmd' run dev
+```
