@@ -27,10 +27,14 @@ export function ManageStudentsModal({ isOpen, onClose, classProfile }: ManageStu
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [classMembers, allStudents] = await Promise.all([
-        fetchClassMembers(classProfile.id),
-        fetchUsers({ role: 'student', searchTerm: debouncedSearchTerm }),
-      ]);
+      // To avoid fetching all students when the search is empty, we conditionally search.
+      const memberFetchPromise = fetchClassMembers(classProfile.id);
+      const studentSearchPromise = debouncedSearchTerm
+        ? fetchUsers({ role: 'student', searchTerm: debouncedSearchTerm })
+        : Promise.resolve([]); // Return no students if search term is empty
+
+      const [classMembers, allStudents] = await Promise.all([memberFetchPromise, studentSearchPromise]);
+
       setMembers(classMembers);
       const memberIds = new Set(classMembers.map(m => m.uid));
       setPotentialStudents(allStudents.filter(s => !memberIds.has(s.uid)));
@@ -53,8 +57,9 @@ export function ManageStudentsModal({ isOpen, onClose, classProfile }: ManageStu
     try {
       await addStudentToClass(classProfile.id, studentId);
       toast.success('Student added to class.');
-      setSearchTerm(''); // Clear search to refresh lists
-      loadData();
+      // Refresh data to show the new student in the member list
+      // and remove them from the potential students list, without clearing the search.
+      await loadData();
     } catch (error: any) {
       toast.error(error.message || 'Failed to add student.');
     }
@@ -66,7 +71,7 @@ export function ManageStudentsModal({ isOpen, onClose, classProfile }: ManageStu
       await removeStudentFromClass(classProfile.id, studentToRemove.uid);
       toast.success('Student removed from class.');
       setStudentToRemove(null);
-      loadData();
+      await loadData();
     } catch (error: any) {
       toast.error(error.message || 'Failed to remove student.');
     }
@@ -89,7 +94,7 @@ export function ManageStudentsModal({ isOpen, onClose, classProfile }: ManageStu
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              {isLoading && searchTerm && <p className="text-sm text-ink-soft mt-2">Searching...</p>}
+              {isLoading && debouncedSearchTerm && <p className="text-sm text-ink-soft mt-2">Searching...</p>}
               {potentialStudents.length > 0 && (
                 <ul className="mt-2 border border-line rounded-card max-h-48 overflow-y-auto">
                   {potentialStudents.map(student => (
@@ -108,7 +113,7 @@ export function ManageStudentsModal({ isOpen, onClose, classProfile }: ManageStu
             {/* Current Members Section */}
             <div>
               <h4 className="font-semibold text-ink mb-2">Current Students ({members.length})</h4>
-              {isLoading && !searchTerm ? <p className="text-sm text-ink-soft">Loading students...</p> :
+              {isLoading && !debouncedSearchTerm ? <p className="text-sm text-ink-soft">Loading students...</p> :
                 members.length === 0 ? <p className="text-sm text-ink-soft p-4 text-center bg-paper rounded-card">This class has no students yet.</p> : (
                   <ul className="border border-line rounded-card">
                     {members.map(student => (

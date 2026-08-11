@@ -3,7 +3,7 @@ import { Button } from '@/shared/components/Button';
 interface ConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   title: string;
   message: string;
   confirmLabel?: string;
@@ -33,8 +33,8 @@ export function ConfirmationDialog({
           <Button
             variant={variant === 'danger' ? 'danger' : 'primary'}
             size="sm"
-            onClick={() => {
-              onConfirm();
+            onClick={async () => {
+              await onConfirm();
               onClose();
             }}
           >

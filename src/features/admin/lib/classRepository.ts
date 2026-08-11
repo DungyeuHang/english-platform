@@ -12,6 +12,7 @@ import {
   writeBatch,
   where,
   addDoc,
+  increment,
   type DocumentData,
 } from 'firebase/firestore';
 import { getFirebaseServices } from '@/shared/lib/firebase/client';
@@ -37,6 +38,7 @@ function docToClassProfile(doc: DocumentData): ClassProfile {
     status: data.status || 'active',
     createdAt: data.createdAt?.toDate() || null,
     updatedAt: data.updatedAt?.toDate() || null,
+    studentCount: data.studentCount || 0,
   };
 }
 
@@ -53,12 +55,12 @@ export async function fetchClasses(): Promise<ClassProfile[]> {
   const teachers = await fetchUsers({ role: 'teacher' });
   const teacherMap = new Map(teachers.map((t) => [t.uid, t]));
 
+  // Vấn đề N+1 query đã được giải quyết bằng cách phi chuẩn hóa studentCount.
+  // Giờ đây, chúng ta chỉ cần làm phong phú thêm thông tin giáo viên.
   for (const c of classes) {
     if (c.teacherId) {
       c.teacher = teacherMap.get(c.teacherId) || null;
     }
-    const membersSnapshot = await getDocs(query(collection(firestore, MEMBERSHIPS_COLLECTION), where('classId', '==', c.id)));
-    c.studentCount = membersSnapshot.size;
   }
 
   return classes;
@@ -72,11 +74,8 @@ export async function fetchTeacherClasses(teacherId: string): Promise<ClassProfi
     const snapshot = await getDocs(q);
     const classes = snapshot.docs.map(docToClassProfile);
 
-    for (const c of classes) {
-        const membersSnapshot = await getDocs(query(collection(firestore, MEMBERSHIPS_COLLECTION), where('classId', '==', c.id)));
-        c.studentCount = membersSnapshot.size;
-    }
-    return classes;
+    // Vấn đề N+1 query đã được giải quyết. Dữ liệu studentCount đã có sẵn.
+    return classes; // Không cần vòng lặp nữa
 }
 
 export async function fetchStudentClasses(studentId: string): Promise<ClassProfile[]> {
@@ -104,6 +103,7 @@ export async function createClass(data: Omit<ClassProfile, 'id' | 'createdAt' | 
 
   const docRef = await addDoc(collection(firestore, CLASSES_COLLECTION), {
     ...data,
+    studentCount: 0,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -165,6 +165,10 @@ export async function addStudentToClass(classId: string, studentId: string): Pro
   const newClassIds = [...(student.classIds || []), classId];
   batch.update(userRef, { classIds: newClassIds });
 
+  // 3. Increment studentCount on the class document
+  const classRef = doc(firestore, CLASSES_COLLECTION, classId);
+  batch.update(classRef, { studentCount: increment(1) });
+
   await batch.commit();
 }
 
@@ -189,6 +193,10 @@ export async function removeStudentFromClass(classId: string, studentId: string)
     const userRef = doc(firestore, 'users', studentId);
     const newClassIds = (student.classIds || []).filter(id => id !== classId);
     batch.update(userRef, { classIds: newClassIds });
+
+    // 3. Decrement studentCount on the class document
+    const classRef = doc(firestore, CLASSES_COLLECTION, classId);
+    batch.update(classRef, { studentCount: increment(-1) });
 
     await batch.commit();
 }

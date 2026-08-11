@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useDebounce } from '@/shared/hooks/useDebounce';
 import {
   fetchUsers,
@@ -69,10 +70,13 @@ export function UserManagementPage() {
     setSubmitError(null);
     try {
       const { auth } = getFirebaseServices();
-      if (!auth) throw new Error('Firebase Auth not initialized.');
+      if (!auth) throw new Error('Firebase Auth chưa được khởi tạo.');
 
-      // This is a temporary admin-only auth instance for user creation.
-      // In a real app, this would be a backend call.
+      // RỦI RO BẢO MẬT NGHIÊM TRỌNG: Việc tạo người dùng từ client (trình duyệt) là cực kỳ nguy hiểm,
+      // ngay cả khi chỉ dành cho admin. Điều này yêu cầu bật quyền tạo người dùng trong Firebase Auth,
+      // mở ra lỗ hổng cho kẻ xấu có thể lạm dụng để tạo tài khoản tùy ý.
+      // GIẢI PHÁP ĐÚNG: Chức năng này PHẢI được chuyển sang một môi trường backend an toàn
+      // (ví dụ: Firebase Cloud Function) và được gọi một cách an toàn từ client.
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       await createUserProfile({
         uid: userCredential.user.uid,
@@ -82,8 +86,9 @@ export function UserManagementPage() {
       });
       setCreateModalOpen(false);
       loadUsers(); // Refresh list
+      toast.success('User created successfully!');
     } catch (err: any) {
-      setSubmitError(err.message || 'Failed to create user.');
+      setSubmitError(err.message || 'Không thể tạo người dùng.');
     } finally {
       setIsSubmitting(false);
     }
@@ -92,28 +97,31 @@ export function UserManagementPage() {
   const handleConfirmDelete = async () => {
     if (!userToDelete) return;
     try {
-      // Note: This only deletes the Firestore document.
-      // Deleting the Firebase Auth user should be done from a trusted backend.
+      // CẢNH BÁO BẢO MẬT: Thao tác này chỉ xóa tài liệu người dùng trong Firestore.
+      // Nó KHÔNG xóa người dùng khỏi Firebase Authentication, để lại một tài khoản "mồ côi".
+      // Việc xóa người dùng Auth cũng PHẢI được thực hiện từ một backend đáng tin cậy (ví dụ: Cloud Function).
       await deleteUserDocument(userToDelete.uid);
+      toast.success('User document deleted. Auth user may still exist.');
       setUserToDelete(null);
       loadUsers(); // Refresh list
     } catch (err) {
-      setError('Failed to delete user.');
+      toast.error('Failed to delete user document.');
       console.error(err);
     }
   };
 
   const handleStatusChange = async (uid: string, newStatus: UserStatus) => {
-    await updateUserStatus(uid, newStatus);
-    loadUsers();
+    try {
+      await updateUserStatus(uid, newStatus);
+      toast.success(`User status updated to ${newStatus}.`);
+      loadUsers();
+    } catch (error) {
+      toast.error('Failed to update user status.');
+      console.error(error);
+    }
   };
 
-  const handleRoleChange = async (uid:string, newRole: UserRole) => {
-    await updateUserRole(uid, newRole);
-    loadUsers();
-  }
-
-  const roleBadges: Record<UserRole, 'info' | 'success' | 'warning'> = {
+  const roleBadges: Record<UserRole, 'info' | 'success' | 'warning' | 'danger'> = {
     admin: 'danger',
     teacher: 'info',
     student: 'success',
@@ -137,7 +145,7 @@ export function UserManagementPage() {
         />
         <select
           value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value as any)}
+          onChange={(e) => setRoleFilter(e.target.value as UserRole | 'all')}
           className="h-10 w-full rounded-card border border-line bg-surface px-3 text-ink transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         >
           <option value="all">All Roles</option>
@@ -147,7 +155,7 @@ export function UserManagementPage() {
         </select>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
+          onChange={(e) => setStatusFilter(e.target.value as UserStatus | 'all')}
           className="h-10 w-full rounded-card border border-line bg-surface px-3 text-ink transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
         >
           <option value="all">All Statuses</option>

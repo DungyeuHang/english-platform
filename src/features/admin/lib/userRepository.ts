@@ -9,6 +9,7 @@ import {
   updateDoc,
   setDoc,
   deleteDoc,
+  where,
   type DocumentData,
 } from 'firebase/firestore';
 import { getFirebaseServices } from '@/shared/lib/firebase/client';
@@ -38,26 +39,29 @@ export async function fetchUsers(filter?: UserFilter): Promise<UserProfile[]> {
   if (!firestore) return [];
 
   try {
-    const q = query(collection(firestore, USERS_COLLECTION), orderBy('createdAt', 'desc'));
+    const queryConstraints = [orderBy('createdAt', 'desc')];
+
+    // Áp dụng bộ lọc phía server
+    if (filter?.role && filter.role !== 'all') {
+      queryConstraints.push(where('role', '==', filter.role));
+    }
+    if (filter?.status && filter.status !== 'all') {
+      queryConstraints.push(where('status', '==', filter.status));
+    }
+    // Lưu ý: Firestore không hỗ trợ tìm kiếm văn bản một phần (như `LIKE` trong SQL) một cách tự nhiên.
+    // Việc lọc theo `searchTerm` vẫn được thực hiện ở phía client. Đối với ứng dụng thực tế,
+    // hãy cân nhắc sử dụng một dịch vụ tìm kiếm chuyên dụng như Algolia.
+
+    const q = query(collection(firestore, USERS_COLLECTION), ...queryConstraints);
     const snapshot = await getDocs(q);
     let users = snapshot.docs.map((doc) => docToUserProfile(doc)).filter((u): u is UserProfile => u !== null);
 
-    if (filter) {
-      if (filter.role && filter.role !== 'all') {
-        users = users.filter((u) => u.role === filter.role);
-      }
-      if (filter.status && filter.status !== 'all') {
-        users = users.filter((u) => u.status === filter.status);
-      }
-      if (filter.searchTerm) {
+    // Áp dụng bộ lọc phía client (cho searchTerm)
+    if (filter?.searchTerm) {
         const term = filter.searchTerm.toLowerCase();
         users = users.filter(
           (u) => u.displayName?.toLowerCase().includes(term) || u.email?.toLowerCase().includes(term),
         );
-      }
-      if (filter.limit) {
-        users = users.slice(0, filter.limit);
-      }
     }
 
     return users;

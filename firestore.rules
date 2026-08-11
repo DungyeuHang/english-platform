@@ -67,5 +67,122 @@ service cloud.firestore {
       allow read: if isAdmin() || isAssignedTeacherForClass(resource.data.classId) || isOwner(resource.data.studentId);
       allow create, delete: if isAdmin() || isAssignedTeacherForClass(request.resource.data.classId);
     }
+
+    // Rules for 'lessons' collection (from Phase 4)
+    match /lessons/{lessonId} {
+      function isAssignedTeacherForLesson(lessonData) {
+        let classDoc = get(/databases/$(database)/documents/classes/$(lessonData.classId));
+        return isTeacher() && classDoc.data.teacherId == request.auth.uid;
+      }
+
+      // Admins, the assigned teacher, or an enrolled student (for published lessons) can read.
+      allow read: if isAdmin() ||
+                     isAssignedTeacherForLesson(resource.data) ||
+                     (resource.data.status == 'published' && getUserData(request.auth.uid).classIds.includes(resource.data.classId));
+
+      // Only admins or the assigned teacher can create/delete.
+      allow create, delete: if isAdmin() || isAssignedTeacherForLesson(request.resource.data);
+
+      // Admins can update anything.
+      // Teachers can update their own lessons, but cannot change classId or createdBy.
+      allow update: if isAdmin() ||
+                     (isAssignedTeacherForLesson(resource.data) &&
+                      request.resource.data.classId == resource.data.classId &&
+                      request.resource.data.createdBy == resource.data.createdBy);
+    }
+
+    // Rules for 'questions' collection (from Phase 4)
+    match /questions/{questionId} {
+      function isAssignedTeacherForQuestion(questionData) {
+        let lessonDoc = get(/databases/$(database)/documents/lessons/$(questionData.lessonId));
+        return isTeacher() && isAssignedTeacherForLesson(lessonDoc.data);
+      }
+
+      // Only admins or the assigned teacher can read/create/update/delete questions.
+      // Students should NOT read questions directly, as they contain correct answers.
+      allow read, create, update, delete: if isAdmin() || isAssignedTeacherForQuestion(request.resource.data);
+    }
+
+    // Rules for 'assignments' collection
+    match /assignments/{assignmentId} {
+      function isAssignedTeacherForAssignment(assignmentData) {
+        let classDoc = get(/databases/$(database)/documents/classes/$(assignmentData.classId));
+        return isTeacher() && classDoc.data.teacherId == request.auth.uid;
+      }
+
+      // Admins, the assigned teacher, or an enrolled student (for published assignments) can read.
+      allow read: if isAdmin() ||
+                     isAssignedTeacherForAssignment(resource.data) ||
+                     (resource.data.status == 'published' && getUserData(request.auth.uid).classIds.includes(resource.data.classId));
+
+      // Only admins or the assigned teacher can create/delete.
+      allow create, delete: if isAdmin() || isAssignedTeacherForAssignment(request.resource.data);
+
+      // Admins can update anything.
+      // Teachers can update their own assignments, but cannot change classId, lessonId, createdBy,
+      // or questionIds after publishing.
+      allow update: if isAdmin() ||
+                     (isAssignedTeacherForAssignment(resource.data) &&
+                      request.resource.data.classId == resource.data.classId &&
+                      request.resource.data.lessonId == resource.data.lessonId &&
+                      request.resource.data.createdBy == resource.data.createdBy &&
+                      (resource.data.status == 'draft' ||
+                       (resource.data.status == 'published' &&
+                        request.resource.data.questionIds == resource.data.questionIds)));
+    }
+
+    // Rules for 'assignmentQuestions' collection (student-readable snapshot of questions)
+    match /assignmentQuestions/{assignmentQuestionId} {
+      function isStudentForAssignmentQuestion(aqData) {
+        let assignmentDoc = get(/databases/$(database)/documents/assignments/$(aqData.assignmentId));
+        return assignmentDoc.data.status == 'published' && getUserData(request.auth.uid).classIds.includes(assignmentDoc.data.classId);
+      }
+
+      // Admins, teachers (for their assignments), or students (for published assignments in their class) can read.
+      allow read: if isAdmin() || isAssignedTeacherForAssignment(get(/databases/$(database)/documents/assignments/$(resource.data.assignmentId)).data) || isStudentForAssignmentQuestion(resource.data);
+      // No one can create/update/delete directly. These are created via assignment publish.
+      allow create, update, delete: if false;
+    }
+
+    // Rules for 'assignmentAnswerKeys' collection (teacher/admin-only correct answers)
+    match /assignmentAnswerKeys/{answerKeyId} {
+      function isAssignedTeacherForAnswerKey(akData) {
+        let assignmentDoc = get(/databases/$(database)/documents/assignments/$(akData.assignmentId));
+        return isTeacher() && isAssignedTeacherForAssignment(assignmentDoc.data);
+      }
+
+      // Only admins and teachers can read. Students are explicitly denied.
+      allow read: if isAdmin() || isAssignedTeacherForAnswerKey(resource.data);
+      // No one can create/update/delete directly. These are created via assignment publish.
+      allow create, update, delete: if false;
+    }
+
+    // Rules for 'submissions' collection
+    match /submissions/{submissionId} {
+      function isAssignedTeacherForSubmission(subData) {
+        let assignmentDoc = get(/databases/$(database)/documents/assignments/$(subData.assignmentId));
+        return isTeacher() && isAssignedTeacherForAssignment(assignmentDoc.data);
+      }
+
+      // Admins can do anything. Teachers can read/update submissions for their assignments. Students can read/update their own.
+      allow read: if isAdmin() || isAssignedTeacherForSubmission(resource.data) || isOwner(resource.data.studentId);
+      allow create: if isOwner(request.resource.data.studentId); // Student can create their own submission
+      allow update: if isAdmin() || (isAssignedTeacherForSubmission(resource.data) && request.resource.data.studentId == resource.data.studentId) || (isOwner(resource.data.studentId) && resource.data.status == 'in_progress' && request.resource.data.status == 'in_progress'); // Teachers can grade, students can update in_progress
+      allow delete: if isAdmin(); // Only admins can delete submissions
+    }
+
+    // Rules for 'submissionAnswers' collection
+    match /submissionAnswers/{answerId} {
+      function isAssignedTeacherForSubmissionAnswer(saData) {
+        let submissionDoc = get(/databases/$(database)/documents/submissions/$(saData.submissionId));
+        return isTeacher() && isAssignedTeacherForSubmission(submissionDoc.data);
+      }
+
+      // Admins can do anything. Teachers can read/update answers for their assignments. Students can read/update their own.
+      allow read: if isAdmin() || isAssignedTeacherForSubmissionAnswer(resource.data) || isOwner(resource.data.studentId);
+      allow create: if isOwner(request.resource.data.studentId); // Student can create their own answers
+      allow update: if isAdmin() || (isAssignedTeacherForSubmissionAnswer(resource.data) && request.resource.data.studentId == resource.data.studentId) || (isOwner(resource.data.studentId) && get(/databases/$(database)/documents/submissions/$(resource.data.submissionId)).data.status == 'in_progress' && request.resource.data.studentId == resource.data.studentId); // Teachers can grade, students can update in_progress
+      allow delete: if isAdmin(); // Only admins can delete answers
+    }
   }
 }

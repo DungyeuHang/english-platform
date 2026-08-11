@@ -11,6 +11,7 @@ export interface AuthUser extends Omit<UserProfile, 'createdAt' | 'updatedAt'> {
   photoURL: string | null;
   role: UserRole;
   status: 'active' | 'disabled';
+  classIds: string[];
 }
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
@@ -46,7 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadUserProfile = useCallback(async (fbUser: FirebaseUser): Promise<AuthUser> => {
     const { firestore } = getFirebaseServices();
-    if (!firestore) return null as any;
+    if (!firestore) {
+      throw new Error('Firestore not initialized.');
+    }
 
     const snap = await getDoc(doc(firestore, 'users', fbUser.uid));
 
@@ -65,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       photoURL: data.photoURL || fbUser.photoURL,
       role,
       status: userStatus,
+      classIds: data.classIds || [],
     };
   }, []);
 

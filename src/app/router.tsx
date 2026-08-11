@@ -9,9 +9,23 @@ import { ProtectedRoute } from '@/shared/components/ProtectedRoute';
 import { AppShellLayout } from '@/app/layouts/AppShellLayout';
 import { AdminPage } from '@/features/admin/pages/AdminPage';
 import { TeacherPage } from '@/features/teacher/pages/TeacherPage';
+import { UserManagementPage } from '@/features/admin/pages/UserManagementPage';
+import { ClassManagementPage } from '@/features/admin/pages/ClassManagementPage';
+import { LessonManagementPage } from '@/features/lesson/pages/LessonManagementPage';
+import { LessonDetailPage } from '@/features/lesson/pages/LessonDetailPage';
+import { QuestionManagementPage } from '@/features/lesson/pages/QuestionManagementPage';
+import { TeacherClassesPage } from '@/features/teacher/pages/TeacherClassesPage';
+import { TeacherLessonsPage } from '@/features/lesson/pages/TeacherLessonsPage';
+import { StudentLessonsPage } from '@/features/lesson/pages/StudentLessonsPage';
 import { StudentPage } from '@/features/student/pages/StudentPage';
 import { HomePage } from '@/features/student/pages/HomePage';
 import { GamificationPage } from '@/features/gamification/pages/GamificationPage';
+import { AssignmentManagementPage } from '@/features/assignment/pages/AssignmentManagementPage';
+import { CreateAssignmentPage } from '@/features/assignment/pages/CreateAssignmentPage';
+import { SubmissionsPage } from '@/features/assignment/pages/SubmissionsPage';
+import { GradeSubmissionPage } from '@/features/assignment/pages/GradeSubmissionPage';
+import { StudentAssignmentsPage } from '@/features/assignment/pages/StudentAssignmentsPage';
+import { StudentAssignmentPage } from '@/features/assignment/pages/StudentAssignmentPage';
 
 export const router = createBrowserRouter([
   {
@@ -32,9 +46,15 @@ export const router = createBrowserRouter([
         ),
         children: [
           { index: true, element: <AdminDashboard /> },
-          { path: 'students', element: <AdminPage /> },
-          { path: 'teachers', element: <AdminPage /> },
-          { path: 'classes', element: <AdminPage /> },
+          { path: 'users', element: <UserManagementPage /> }, // Renamed from students/teachers
+          { path: 'classes', element: <ClassManagementPage /> },
+          { path: 'lessons', element: <LessonManagementPage /> },
+          { path: 'lessons/:lessonId', element: <LessonDetailPage /> },
+          { path: 'lessons/:lessonId/questions', element: <QuestionManagementPage /> },
+          { path: 'assignments', element: <AssignmentManagementPage /> },
+          { path: 'assignments/create', element: <CreateAssignmentPage /> },
+          { path: 'assignments/:assignmentId/submissions', element: <SubmissionsPage /> },
+          { path: 'assignments/:assignmentId/submissions/:submissionId/grade', element: <GradeSubmissionPage /> },
         ],
       },
       {
@@ -46,10 +66,16 @@ export const router = createBrowserRouter([
         ),
         children: [
           { index: true, element: <TeacherDashboard /> },
-          { path: 'classes', element: <TeacherPage /> },
-          { path: 'lessons', element: <TeacherPage /> },
-          { path: 'question-bank', element: <TeacherPage /> },
-          { path: 'assignments', element: <TeacherPage /> },
+          { path: 'classes', element: <TeacherClassesPage /> },
+          { path: 'lessons', element: <TeacherLessonsPage /> },
+          { path: 'lessons/:lessonId', element: <LessonDetailPage /> },
+          { path: 'lessons/:lessonId/questions', element: <QuestionManagementPage /> },
+          { path: 'assignments', element: <AssignmentManagementPage /> },
+          { path: 'assignments/create', element: <CreateAssignmentPage /> },
+          { path: 'assignments/:assignmentId/submissions', element: <SubmissionsPage /> },
+          { path: 'assignments/:assignmentId/submissions/:submissionId/grade', element: <GradeSubmissionPage /> },
+          // { path: 'question-bank', element: <TeacherPage /> }, // Removed as question bank is managed within lessons
+
         ],
       },
       {
@@ -61,8 +87,10 @@ export const router = createBrowserRouter([
         ),
         children: [
           { index: true, element: <StudentDashboard /> },
-          { path: 'assignments', element: <StudentPage /> },
-          { path: 'learning', element: <StudentPage /> },
+          { path: 'assignments', element: <StudentAssignmentsPage /> },
+          { path: 'assignments/:assignmentId', element: <StudentAssignmentPage /> },
+          { path: 'lessons', element: <StudentLessonsPage /> }, // Student view for lessons
+          { path: 'learning', element: <StudentLessonsPage /> }, // Placeholder for future learning path
           { path: 'progress', element: <StudentPage /> },
           { path: 'achievements', element: <GamificationPage /> },
         ],

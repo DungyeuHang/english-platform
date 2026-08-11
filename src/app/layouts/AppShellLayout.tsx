@@ -15,7 +15,7 @@ const teacherNavItems = [
   { to: '/teacher', label: 'Dashboard', end: true },
   { to: '/teacher/classes', label: 'Classes' },
   { to: '/teacher/lessons', label: 'Lessons' },
-  { to: '/teacher/question-bank', label: 'Question Bank' },
+  // { to: '/teacher/question-bank', label: 'Question Bank' }, // Question bank is now managed within lessons
   { to: '/teacher/assignments', label: 'Assignments' },
 ];
 

@@ -1,14 +1,9 @@
 import { Card, Badge, Avatar } from '@/shared/components';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchStudentClasses } from '@/features/admin/lib/classRepository';
 import type { ClassProfile } from '@/shared/utils/types';
-
-const mockAssignments = [
-  { id: '1', title: 'Grammar Quiz #3', subject: 'Grammar', dueDate: '2024-12-20', progress: 75, status: 'in-progress' as const },
-  { id: '2', title: 'Vocabulary Practice', subject: 'Vocabulary', dueDate: '2024-12-22', progress: 0, status: 'not-started' as const },
-  { id: '3', title: 'Reading Comprehension', subject: 'Reading', dueDate: '2024-12-18', progress: 100, status: 'completed' as const },
-];
 
 const recentActivity = [
   { id: '1', title: 'Completed "Present Simple" lesson', timestamp: '2 hours ago', xp: '+50' },
@@ -82,51 +77,13 @@ export function StudentDashboard() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Assignments */}
         <div className="lg:col-span-2">
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-ink">My Assignments</h3>
-              <Badge variant="info">{mockAssignments.length} active</Badge>
-            </div>
-            <div className="space-y-3">
-              {mockAssignments.map((assignment) => (
-                <div
-                  key={assignment.id}
-                  className="p-4 rounded-card bg-paper hover:bg-paper/80 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <p className="font-medium text-ink">{assignment.title}</p>
-                      <p className="text-sm text-ink-soft">{assignment.subject}</p>
-                    </div>
-                    <Badge
-                      variant={
-                        assignment.status === 'completed'
-                          ? 'success'
-                          : assignment.status === 'in-progress'
-                            ? 'info'
-                            : 'warning'
-                      }
-                    >
-                      {assignment.status === 'completed'
-                        ? 'Completed'
-                        : assignment.status === 'in-progress'
-                          ? 'In Progress'
-                          : 'Not Started'}
-                    </Badge>
-                  </div>
-                  <div className="w-full bg-line rounded-full h-2 mt-3">
-                    <div
-                      className="bg-brand-600 h-2 rounded-full transition-all"
-                      style={{ width: `${assignment.progress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-ink-soft mt-1">
-                    {assignment.progress}% complete · Due: {assignment.dueDate}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </Card>
+          <Link to="/student/assignments">
+            <Card className="hover:bg-paper/80 transition-colors">
+              <h3 className="text-lg font-semibold text-ink mb-4">My Assignments</h3>
+              <p className="text-ink-soft">View and complete your assigned tasks.</p>
+              <Button variant="secondary" size="sm" className="mt-4">Go to Assignments</Button>
+            </Card>
+          </Link>
         </div>
 
         {/* Recent Activity */}
