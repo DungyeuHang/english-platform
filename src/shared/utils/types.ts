@@ -1,11 +1,16 @@
 export type UserRole = 'admin' | 'teacher' | 'student';
 
-export interface User {
+export type UserStatus = 'active' | 'disabled';
+
+export interface UserProfile {
   uid: string;
   email: string;
   displayName: string | null;
-  photoURL: string | null;
   role: UserRole;
+  status: UserStatus;
+  photoURL: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
 }
 
 export interface StudentProfile {

@@ -2,14 +2,15 @@ import React, { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { onAuthStateChanged, type User as FirebaseUser, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { getFirebaseServices } from '@/shared/lib/firebase/client';
-import type { UserRole } from '@/shared/utils/types';
+import type { UserProfile, UserRole } from '@/shared/utils/types';
 
-export interface AuthUser {
+export interface AuthUser extends Omit<UserProfile, 'createdAt' | 'updatedAt'> {
   uid: string;
   email: string;
   displayName: string | null;
   photoURL: string | null;
   role: UserRole;
+  status: 'active' | 'disabled';
 }
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
@@ -22,6 +23,7 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   error: string | null;
   clearError: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = React.createContext<AuthContextValue | undefined>(undefined);
@@ -34,12 +36,6 @@ export function useAuth(): AuthContextValue {
   return context;
 }
 
-const ROLE_COLLECTION_MAP: Record<UserRole, string> = {
-  admin: 'admins',
-  teacher: 'teachers',
-  student: 'students',
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -48,21 +44,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearError = useCallback(() => setError(null), []);
 
-  const loadUserRole = useCallback(async (fbUser: FirebaseUser): Promise<UserRole> => {
+  const loadUserProfile = useCallback(async (fbUser: FirebaseUser): Promise<AuthUser> => {
     const { firestore } = getFirebaseServices();
-    if (!firestore) {
-      return 'student';
+    if (!firestore) return null as any;
+
+    const snap = await getDoc(doc(firestore, 'users', fbUser.uid));
+
+    if (!snap.exists()) {
+      throw new Error('User profile not found. Please contact an administrator.');
     }
 
-    for (const [role, collectionName] of Object.entries(ROLE_COLLECTION_MAP)) {
-      const ref = doc(firestore, collectionName, fbUser.uid);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        return role as UserRole;
-      }
-    }
-    return 'student';
+    const data = snap.data();
+    const role = data.role || 'student';
+    const userStatus = data.status || 'active';
+
+    return {
+      uid: fbUser.uid,
+      email: fbUser.email || '',
+      displayName: data.displayName || fbUser.displayName || '',
+      photoURL: data.photoURL || fbUser.photoURL,
+      role,
+      status: userStatus,
+    };
   }, []);
+
+  const refreshUser = useCallback(async () => {
+    if (!firebaseUser) return;
+    try {
+      const profile = await loadUserProfile(firebaseUser);
+      setUser(profile);
+    } catch (err) {
+      console.error('Failed to refresh user profile:', err);
+    }
+  }, [firebaseUser, loadUserProfile]);
 
   useEffect(() => {
     const { auth } = getFirebaseServices();
@@ -84,18 +98,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         try {
-          const role = await loadUserRole(fbUser);
-          setUser({
-            uid: fbUser.uid,
-            email: fbUser.email || '',
-            displayName: fbUser.displayName,
-            photoURL: fbUser.photoURL,
-            role,
-          });
+          const profile = await loadUserProfile(fbUser);
+          setUser(profile);
           setStatus('authenticated');
-        } catch (err) {
-          console.error('Failed to load user role:', err);
-          setError('Failed to load user profile. Please try again.');
+        } catch (err: any) {
+          console.error('Failed to load user profile:', err);
+          setError(err.message || 'Failed to load user profile. Please try again.');
           setStatus('unauthenticated');
         }
       },
@@ -107,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     return unsubscribe;
-  }, [loadUserRole]);
+  }, [loadUserProfile]);
 
   const login = useCallback(async (email: string, password: string) => {
     const { auth } = getFirebaseServices();
@@ -141,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, firebaseUser, status, login, logout, error, clearError }}>
+    <AuthContext.Provider value={{ user, firebaseUser, status, login, logout, error, clearError, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

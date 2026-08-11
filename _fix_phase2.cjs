@@ -1,4 +1,7 @@
-import { Navigate, useLocation } from 'react-router-dom';
+const fs = require('fs');
+
+const files = {
+  'd:/GitHub/english-platform/src/shared/components/ProtectedRoute.tsx': `import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
 import { LoadingScreen } from '@/shared/components/LoadingScreen';
 
@@ -33,4 +36,11 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   return <>{children}</>;
+}
+`,
+};
+
+for (const [filePath, content] of Object.entries(files)) {
+  fs.writeFileSync(filePath, content, 'utf8');
+  console.log('Written:', filePath);
 }

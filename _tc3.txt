@@ -1,0 +1,6 @@
+
+> english-platform@0.1.0 typecheck
+> tsc --noEmit
+
+src/features/admin/pages/UserManagementPage.tsx(1,1): error TS6192: All imports in import declaration are unused.
+src/shared/components/ConfirmationDialog.tsx(1,1): error TS6133: 'ReactNode' is declared but its value is never read.
