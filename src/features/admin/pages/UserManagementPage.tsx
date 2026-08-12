@@ -55,7 +55,7 @@ export function UserManagementPage() {
 
   useEffect(() => {
     loadUsers();
-  }, [debouncedSearchTerm, roleFilter, statusFilter, currentUser]);
+  }, [debouncedSearchTerm, roleFilter, statusFilter, currentUser?.uid]);
 
   const handleCreateUser = async (data: {
     email: string;
