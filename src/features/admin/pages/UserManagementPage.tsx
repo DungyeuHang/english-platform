@@ -69,14 +69,11 @@ export function UserManagementPage() {
       // SECURITY FIX: User creation is now handled by a secure Cloud Function.
       // The client sends the necessary data, and the backend handles Auth and Firestore profile creation.
       const result = await callCreateUser(data);
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to create user.');
-      }
       setCreateModalOpen(false);
       loadUsers(); // Refresh list
       toast.success(result.message || 'User created successfully!');
     } catch (err: any) {
-      setSubmitError(err.message || 'Không thể tạo người dùng.');
+      setSubmitError(err.message || 'Could not create user.');
     } finally {
       setIsSubmitting(false);
     }
@@ -88,9 +85,6 @@ export function UserManagementPage() {
       // SECURITY FIX: User deletion is now handled by a secure Cloud Function.
       // This ensures both the Firebase Auth user and the Firestore document are deleted atomically.
       const result = await callDeleteUser({ uid: userToDelete.uid });
-       if (!result.success) {
-        throw new Error(result.error || 'Failed to delete user.');
-      }
       toast.success(result.message || 'User deleted successfully.');
       setUserToDelete(null);
       loadUsers(); // Refresh list

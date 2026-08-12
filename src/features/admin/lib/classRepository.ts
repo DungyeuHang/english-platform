@@ -1,21 +1,16 @@
 import {
   collection,
-  doc,
-  getDoc,
   getDocs,
   query,
   orderBy,
   serverTimestamp,
   updateDoc,
-  setDoc,
-  deleteDoc,
-  writeBatch,
   where,
   addDoc,
-  increment,
   type DocumentData,
 } from 'firebase/firestore';
-import { getFirebaseServices } from '@/shared/lib/firebase/client';
+import { getFirebaseServices, getFunctions } from '@/shared/lib/firebase/client';
+import { httpsCallable } from 'firebase/functions';
 import type { ClassProfile, ClassStatus, UserProfile } from '@/shared/utils/types';
 import { fetchUsers, fetchUserProfile } from './userRepository';
 
@@ -166,76 +161,32 @@ export async function fetchClassMembers(classId: string): Promise<UserProfile[]>
   return users;
 }
 
-export async function addStudentToClass(classId: string, studentId: string): Promise<void> {
-  const firestore = getFirestore();
-  if (!firestore) return;
-
-  const student = await fetchUserProfile(studentId);
-  if (!student || student.role !== 'student') {
-    throw new Error('User is not a valid student.');
-  }
-
-  const membershipQuery = query(collection(firestore, MEMBERSHIPS_COLLECTION), where('classId', '==', classId), where('studentId', '==', studentId));
-  const existingMembership = await getDocs(membershipQuery);
-  if (!existingMembership.empty) {
-    // This makes the operation idempotent for the happy path.
-    // For a more robust solution, consider using a deterministic doc ID like `${classId}_${studentId}`.
-    console.log('Student already in class');
-    return;
-  }
-
-  const batch = writeBatch(firestore);
-
-  // 1. Add to classMemberships collection
-  const membershipRef = doc(collection(firestore, MEMBERSHIPS_COLLECTION));
-  batch.set(membershipRef, {
-    classId,
-    studentId,
-    joinedAt: serverTimestamp(),
-  });
-
-  // 2. Update user's classIds array
-  const userRef = doc(firestore, 'users', studentId);
-  const newClassIds = [...(student.classIds || []), classId];
-  batch.update(userRef, { classIds: newClassIds });
-
-  // 3. Increment studentCount on the class document
-  const classRef = doc(firestore, CLASSES_COLLECTION, classId);
-  batch.update(classRef, { studentCount: increment(1) });
-
-  await batch.commit();
+/**
+ * Securely adds a student to a class by calling a Cloud Function.
+ * This ensures all authorization and data consistency logic is handled on the server.
+ */
+export async function addStudentToClass(
+  classId: string,
+  studentId: string,
+): Promise<{ success: boolean; message: string }> {
+  const functions = getFunctions();
+  if (!functions) throw new Error('Firebase Functions not initialized.');
+  const addStudent = httpsCallable(functions, 'addStudentToClass');
+  const result = await addStudent({ classId, studentId });
+  return result.data as { success: boolean; message: string };
 }
 
-export async function removeStudentFromClass(classId: string, studentId: string): Promise<void> {
-    const firestore = getFirestore();
-    if (!firestore) return;
-
-    const student = await fetchUserProfile(studentId);
-    if (!student) return;
-
-    const batch = writeBatch(firestore);
-
-    // 1. Remove from classMemberships
-    const membershipQuery = query(collection(firestore, MEMBERSHIPS_COLLECTION), where('classId', '==', classId), where('studentId', '==', studentId));
-    const membershipSnapshot = await getDocs(membershipQuery);
-
-    // DATA INTEGRITY FIX: If student is not a member, do nothing.
-    // If there are duplicate memberships, delete all of them and decrement count accordingly.
-    if (membershipSnapshot.empty) {
-      console.warn(`Attempted to remove student ${studentId} who is not in class ${classId}.`);
-      return;
-    }
-
-    membershipSnapshot.docs.forEach(doc => batch.delete(doc.ref));
-
-    // 2. Update user's classIds array
-    const userRef = doc(firestore, 'users', studentId);
-    const newClassIds = (student.classIds || []).filter(id => id !== classId);
-    batch.update(userRef, { classIds: newClassIds });
-
-    // 3. Decrement studentCount by the number of memberships removed.
-    const classRef = doc(firestore, CLASSES_COLLECTION, classId);
-    batch.update(classRef, { studentCount: increment(-membershipSnapshot.size) });
-
-    await batch.commit();
+/**
+ * Securely removes a student from a class by calling a Cloud Function.
+ * This ensures all authorization and data consistency logic is handled on the server.
+ */
+export async function removeStudentFromClass(
+  classId: string,
+  studentId: string,
+): Promise<{ success: boolean; message: string }> {
+  const functions = getFunctions();
+  if (!functions) throw new Error('Firebase Functions not initialized.');
+  const removeStudent = httpsCallable(functions, 'removeStudentFromClass');
+  const result = await removeStudent({ classId, studentId });
+  return result.data as { success: boolean; message: string };
 }

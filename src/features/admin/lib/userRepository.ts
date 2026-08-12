@@ -206,52 +206,26 @@ export async function callCreateUser(data: {
   displayName: string;
   role: UserRole;
   password: string;
-}): Promise<{ success: boolean; message?: string; error?: string }> {
+}): Promise<{ success: boolean; uid: string; message: string }> {
   const functions = getFunctions();
   if (!functions) throw new Error('Firebase Functions not initialized.');
 
-  // This is how you would implement the Cloud Function:
-  //
-  // exports.createUser = functions.https.onCall(async (data, context) => {
-  //   if (context.auth?.token?.role !== 'admin') {
-  //     throw new functions.https.HttpsError('permission-denied', 'Must be an admin to create users.');
-  //   }
-  //   const { email, password, displayName, role } = data;
-  //   const userRecord = await admin.auth().createUser({ email, password, displayName });
-  //   await admin.auth().setCustomUserClaims(userRecord.uid, { role });
-  //   await admin.firestore().collection('users').doc(userRecord.uid).set({
-  //     /* ...user profile data... */
-  //   });
-  //   return { success: true, message: 'User created successfully.' };
-  // });
-
   const createUser = httpsCallable(functions, 'createUser');
-  const result = (await createUser(data)) as { data: { success: boolean; message?: string; error?: string } };
-  return result.data;
+  const result = await createUser(data);
+  return result.data as { success: boolean; uid: string; message: string };
 }
 
 /**
  * Calls a secure Cloud Function to delete a user.
  * This ensures both the Auth record and Firestore data are properly removed.
  */
-export async function callDeleteUser(data: { uid: string }): Promise<{ success: boolean; message?: string; error?: string }> {
+export async function callDeleteUser(data: { uid: string }): Promise<{ success: boolean; uid: string; message: string }> {
   const functions = getFunctions();
   if (!functions) throw new Error('Firebase Functions not initialized.');
 
-  // This is how you would implement the Cloud Function:
-  //
-  // exports.deleteUser = functions.https.onCall(async (data, context) => {
-  //   if (context.auth?.token?.role !== 'admin') {
-  //     throw new functions.https.HttpsError('permission-denied', 'Must be an admin to delete users.');
-  //   }
-  //   await admin.auth().deleteUser(data.uid);
-  //   await admin.firestore().collection('users').doc(data.uid).delete();
-  //   // You might also want to clean up other related data here (e.g., class memberships)
-  //   return { success: true, message: 'User deleted successfully.' };
-  // });
   const deleteUser = httpsCallable(functions, 'deleteUser');
-  const result = (await deleteUser(data)) as { data: { success: boolean; message?: string; error?: string } };
-  return result.data;
+  const result = await deleteUser(data);
+  return result.data as { success: boolean; uid: string; message: string };
 }
 
 function docToUserProfile(snap: {

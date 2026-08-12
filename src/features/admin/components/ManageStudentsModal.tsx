@@ -55,8 +55,8 @@ export function ManageStudentsModal({ isOpen, onClose, classProfile }: ManageStu
 
   const handleAddStudent = async (studentId: string) => {
     try {
-      await addStudentToClass(classProfile.id, studentId);
-      toast.success('Student added to class.');
+      const result = await addStudentToClass(classProfile.id, studentId);
+      toast.success(result.message);
       // Refresh data to show the new student in the member list
       // and remove them from the potential students list, without clearing the search.
       await loadData();
@@ -68,8 +68,8 @@ export function ManageStudentsModal({ isOpen, onClose, classProfile }: ManageStu
   const handleConfirmRemove = async () => {
     if (!studentToRemove) return;
     try {
-      await removeStudentFromClass(classProfile.id, studentToRemove.uid);
-      toast.success('Student removed from class.');
+      const result = await removeStudentFromClass(classProfile.id, studentToRemove.uid);
+      toast.success(result.message);
       setStudentToRemove(null);
       await loadData();
     } catch (error: any) {
