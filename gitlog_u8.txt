@@ -1,0 +1,10 @@
+﻿c9e8821 Update UserManagementPage.tsx
+2b2d914 Update package.json
+858b184 1
+023aa8e Update README.md
+9740a69 1
+cae94cf ok
+3d280db chore: remove temporary fix scripts
+ea1dcac feat: Phase 2 - User Management & Role Management implementation\n\n- Created userRepository.ts with CRUD operations for user profiles\n- Implemented UserManagementPage with search, filter, and actions\n- Added CreateUserModal for admin user creation\n- Updated ProtectedRoute to block disabled users\n- All checks passing: typecheck, tests, e2e
+7aa25e4 feat: phase-1-auth-shell ΓÇö auth, roles, app shell, dashboards, design system, tests
+87b640d feat: foundation ΓÇö React+TS+Vite+Tailwind+Firebase+Vitest+Playwright
