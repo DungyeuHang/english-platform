@@ -1,15 +1,12 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { useDebounce } from '@/shared/hooks/useDebounce';
+import { useDebounce } from '@/shared/hooks';
 import {
   fetchUsers,
-  updateUserRole,
   updateUserStatus,
-  deleteUserDocument,
+  callCreateUser,
+  callDeleteUser,
 } from '@/features/admin/lib/userRepository';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { getFirebaseServices } from '@/shared/lib/firebase/client';
-import { createUserProfile } from '@/features/admin/lib/userRepository';
 import type { UserProfile, UserRole, UserStatus } from '@/shared/utils/types';
 import { Button } from '@/shared/components/Button';
 import { Input } from '@/shared/components/Input';
@@ -69,24 +66,15 @@ export function UserManagementPage() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const { auth } = getFirebaseServices();
-      if (!auth) throw new Error('Firebase Auth chưa được khởi tạo.');
-
-      // RỦI RO BẢO MẬT NGHIÊM TRỌNG: Việc tạo người dùng từ client (trình duyệt) là cực kỳ nguy hiểm,
-      // ngay cả khi chỉ dành cho admin. Điều này yêu cầu bật quyền tạo người dùng trong Firebase Auth,
-      // mở ra lỗ hổng cho kẻ xấu có thể lạm dụng để tạo tài khoản tùy ý.
-      // GIẢI PHÁP ĐÚNG: Chức năng này PHẢI được chuyển sang một môi trường backend an toàn
-      // (ví dụ: Firebase Cloud Function) và được gọi một cách an toàn từ client.
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      await createUserProfile({
-        uid: userCredential.user.uid,
-        email: data.email,
-        displayName: data.displayName,
-        role: data.role,
-      });
+      // SECURITY FIX: User creation is now handled by a secure Cloud Function.
+      // The client sends the necessary data, and the backend handles Auth and Firestore profile creation.
+      const result = await callCreateUser(data);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create user.');
+      }
       setCreateModalOpen(false);
       loadUsers(); // Refresh list
-      toast.success('User created successfully!');
+      toast.success(result.message || 'User created successfully!');
     } catch (err: any) {
       setSubmitError(err.message || 'Không thể tạo người dùng.');
     } finally {
@@ -97,16 +85,17 @@ export function UserManagementPage() {
   const handleConfirmDelete = async () => {
     if (!userToDelete) return;
     try {
-      // CẢNH BÁO BẢO MẬT: Thao tác này chỉ xóa tài liệu người dùng trong Firestore.
-      // Nó KHÔNG xóa người dùng khỏi Firebase Authentication, để lại một tài khoản "mồ côi".
-      // Việc xóa người dùng Auth cũng PHẢI được thực hiện từ một backend đáng tin cậy (ví dụ: Cloud Function).
-      await deleteUserDocument(userToDelete.uid);
-      toast.success('User document deleted. Auth user may still exist.');
+      // SECURITY FIX: User deletion is now handled by a secure Cloud Function.
+      // This ensures both the Firebase Auth user and the Firestore document are deleted atomically.
+      const result = await callDeleteUser({ uid: userToDelete.uid });
+       if (!result.success) {
+        throw new Error(result.error || 'Failed to delete user.');
+      }
+      toast.success(result.message || 'User deleted successfully.');
       setUserToDelete(null);
       loadUsers(); // Refresh list
     } catch (err) {
-      toast.error('Failed to delete user document.');
-      console.error(err);
+      toast.error((err as Error).message || 'Failed to delete user.');
     }
   };
 

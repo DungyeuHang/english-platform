@@ -1,1 +1,1 @@
-export {};
+export { useDebounce } from './useDebounce';

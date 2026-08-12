@@ -22,6 +22,18 @@ import { fetchUsers, fetchUserProfile } from './userRepository';
 const CLASSES_COLLECTION = 'classes';
 const MEMBERSHIPS_COLLECTION = 'classMemberships';
 
+/**
+ * Splits an array into chunks of a specified size.
+ * Firestore 'in' queries are limited (currently to 30).
+ */
+function chunkArray<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
+}
+
 function getFirestore() {
   const { firestore } = getFirebaseServices();
   return firestore;
@@ -85,9 +97,20 @@ export async function fetchStudentClasses(studentId: string): Promise<ClassProfi
     const user = await fetchUserProfile(studentId);
     if (!user || !user.classIds || user.classIds.length === 0) return [];
 
-    const q = query(collection(firestore, CLASSES_COLLECTION), where('__name__', 'in', user.classIds));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(docToClassProfile);
+    // SCALABILITY FIX: Chunk the classIds to avoid Firestore 'in' query limit (30).
+    const classIdChunks = chunkArray(user.classIds, 30);
+    const classPromises = classIdChunks.map(chunk => {
+      const q = query(collection(firestore, CLASSES_COLLECTION), where('__name__', 'in', chunk));
+      return getDocs(q);
+    });
+
+    const snapshots = await Promise.all(classPromises);
+    const classes = snapshots.flatMap(snapshot => snapshot.docs.map(docToClassProfile));
+
+    // Sort classes by creation date as the original query intended but couldn't with an 'in' filter.
+    classes.sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+
+    return classes;
 }
 
 export async function createClass(data: Omit<ClassProfile, 'id' | 'createdAt' | 'updatedAt' | 'studentCount' | 'teacher'>): Promise<string> {
@@ -127,11 +150,20 @@ export async function fetchClassMembers(classId: string): Promise<UserProfile[]>
 
   if (studentIds.length === 0) return [];
 
-  const usersSnapshot = await getDocs(query(collection(firestore, 'users'), where('__name__', 'in', studentIds)));
-  return usersSnapshot.docs.map(d => ({
+  // SCALABILITY FIX: Chunk the studentIds to avoid Firestore 'in' query limit (30).
+  const studentIdChunks = chunkArray(studentIds, 30);
+  const userPromises = studentIdChunks.map(chunk => {
+    const q = query(collection(firestore, 'users'), where('__name__', 'in', chunk));
+    return getDocs(q);
+  });
+
+  const snapshots = await Promise.all(userPromises);
+  const users = snapshots.flatMap(snapshot => snapshot.docs.map(d => ({
       uid: d.id,
       ...d.data()
-  } as UserProfile));
+  } as UserProfile)));
+
+  return users;
 }
 
 export async function addStudentToClass(classId: string, studentId: string): Promise<void> {
@@ -146,6 +178,8 @@ export async function addStudentToClass(classId: string, studentId: string): Pro
   const membershipQuery = query(collection(firestore, MEMBERSHIPS_COLLECTION), where('classId', '==', classId), where('studentId', '==', studentId));
   const existingMembership = await getDocs(membershipQuery);
   if (!existingMembership.empty) {
+    // This makes the operation idempotent for the happy path.
+    // For a more robust solution, consider using a deterministic doc ID like `${classId}_${studentId}`.
     console.log('Student already in class');
     return;
   }
@@ -184,19 +218,24 @@ export async function removeStudentFromClass(classId: string, studentId: string)
     // 1. Remove from classMemberships
     const membershipQuery = query(collection(firestore, MEMBERSHIPS_COLLECTION), where('classId', '==', classId), where('studentId', '==', studentId));
     const membershipSnapshot = await getDocs(membershipQuery);
-    if (!membershipSnapshot.empty) {
-        const membershipDoc = membershipSnapshot.docs[0];
-        batch.delete(membershipDoc.ref);
+
+    // DATA INTEGRITY FIX: If student is not a member, do nothing.
+    // If there are duplicate memberships, delete all of them and decrement count accordingly.
+    if (membershipSnapshot.empty) {
+      console.warn(`Attempted to remove student ${studentId} who is not in class ${classId}.`);
+      return;
     }
+
+    membershipSnapshot.docs.forEach(doc => batch.delete(doc.ref));
 
     // 2. Update user's classIds array
     const userRef = doc(firestore, 'users', studentId);
     const newClassIds = (student.classIds || []).filter(id => id !== classId);
     batch.update(userRef, { classIds: newClassIds });
 
-    // 3. Decrement studentCount on the class document
+    // 3. Decrement studentCount by the number of memberships removed.
     const classRef = doc(firestore, CLASSES_COLLECTION, classId);
-    batch.update(classRef, { studentCount: increment(-1) });
+    batch.update(classRef, { studentCount: increment(-membershipSnapshot.size) });
 
     await batch.commit();
 }
