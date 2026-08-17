@@ -7,6 +7,7 @@ import {
   updateDoc,
   where,
   addDoc,
+  doc,
   type DocumentData,
 } from 'firebase/firestore';
 import { getFirebaseServices, getFunctions } from '@/shared/lib/firebase/client';

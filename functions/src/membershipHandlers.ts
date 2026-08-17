@@ -37,7 +37,7 @@ export async function addStudentToClassHandler(
   }
   const isAdmin = caller.role === 'admin';
 
-  const body = (data ?? {}) as { classId?: unknown; studentId?: unknown };
+  const body = (data ?? {}) as Record<string, unknown>;
   const classId = assertString(body.classId, 'classId');
   const studentId = assertString(body.studentId, 'studentId');
   if (!isClassId(classId) || !isStudentId(studentId)) {
@@ -99,7 +99,7 @@ export async function removeStudentFromClassHandler(
   }
   const isAdmin = caller.role === 'admin';
 
-  const body = (data ?? {}) as { classId?: unknown; studentId?: unknown };
+  const body = (data ?? {}) as Record<string, unknown>;
   const classId = assertString(body.classId, 'classId');
   const studentId = assertString(body.studentId, 'studentId');
   if (!isClassId(classId) || !isStudentId(studentId)) {

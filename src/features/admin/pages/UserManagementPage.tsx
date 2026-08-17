@@ -72,8 +72,8 @@ export function UserManagementPage() {
       setCreateModalOpen(false);
       loadUsers(); // Refresh list
       toast.success(result.message || 'User created successfully!');
-    } catch (err: any) {
-      setSubmitError(err.message || 'Could not create user.');
+    } catch (err) {
+      setSubmitError((err as Error).message || 'Could not create user.');
     } finally {
       setIsSubmitting(false);
     }

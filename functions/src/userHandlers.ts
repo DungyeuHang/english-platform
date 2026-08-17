@@ -41,10 +41,11 @@ export async function createUserHandler(
   const callerUid = requireAuth(ctx);
   await requireActiveAdmin(svc, callerUid);
 
-  const email = assertString((data as { email?: unknown })?.email, 'email');
-  const password = assertString((data as { password?: unknown })?.password, 'password');
-  const displayName = assertString((data as { displayName?: unknown })?.displayName, 'displayName');
-  const role = assertString((data as { role?: unknown })?.role, 'role');
+  const body = (data ?? {}) as Record<string, unknown>;
+  const email = assertString(body.email, 'email');
+  const password = assertString(body.password, 'password');
+  const displayName = assertString(body.displayName, 'displayName');
+  const role = assertString(body.role, 'role');
 
   assertValidEmail(email);
   assertValidPassword(password);
@@ -95,7 +96,8 @@ export async function deleteUserHandler(
   const callerUid = requireAuth(ctx);
   await requireActiveAdmin(svc, callerUid);
 
-  const uid = assertString((data as { uid?: unknown })?.uid, 'uid');
+  const body = (data ?? {}) as Record<string, unknown>;
+  const uid = assertString(body.uid, 'uid');
   assertNonEmptyId(uid, 'uid');
 
   if (uid === callerUid) {
@@ -172,4 +174,3 @@ function getErrorCode(err: unknown): string {
   }
   return '';
 }
-

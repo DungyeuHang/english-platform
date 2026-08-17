@@ -60,8 +60,8 @@ export function ManageStudentsModal({ isOpen, onClose, classProfile }: ManageStu
       // Refresh data to show the new student in the member list
       // and remove them from the potential students list, without clearing the search.
       await loadData();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to add student.');
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to add student.');
     }
   };
 
@@ -72,8 +72,8 @@ export function ManageStudentsModal({ isOpen, onClose, classProfile }: ManageStu
       toast.success(result.message);
       setStudentToRemove(null);
       await loadData();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to remove student.');
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to remove student.');
     }
   };
 

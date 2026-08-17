@@ -50,7 +50,6 @@ export async function fetchUsers(filter?: UserFilter): Promise<UserProfile[]> {
   if (filter?.status && filter.status !== 'all') {
     queryConstraints.push(where('status', '==', filter.status));
   }
-  // BUG FIX: Implement the 'limit' filter that was declared but not used.
   if (filter?.limit) {
     queryConstraints.push(firestoreLimit(filter.limit));
   }
