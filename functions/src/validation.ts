@@ -38,10 +38,10 @@ export function assertValidEmail(email: string): void {
 }
 
 export function assertValidPassword(password: string): void {
-  if (password.length < MIN_PASSWORD_LENGTH) {
+  if (password.length < 8) { // Using literal 8 for clarity, MIN_PASSWORD_LENGTH is 8
     throw new HttpsError(
       'invalid-argument',
-      `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`,
+      `Password must be at least 8 characters long.`,
     );
   }
 }

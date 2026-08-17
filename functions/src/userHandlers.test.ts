@@ -54,8 +54,8 @@ describe('createUserHandler', () => {
   it('should deny short password', async () => {
     const ctx = { uid: 'admin1' };
     mockServices.readUser.calledWith('admin1').mockResolvedValue({ role: 'admin', status: 'active' });
-    await expect(createUserHandler({ ...validData, password: '123' }, ctx, mockServices)).rejects.toThrow(
-      new HttpsError('invalid-argument', 'Password must be at least 6 characters long.'),
+    await expect(createUserHandler({ ...validData, password: 'short' }, ctx, mockServices)).rejects.toThrow(
+      new HttpsError('invalid-argument', 'Password must be at least 8 characters long.'),
     );
   });
 
