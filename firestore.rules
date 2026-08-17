@@ -13,7 +13,7 @@ service cloud.firestore {
     }
 
     function isRole(role) {
-      return isSignedIn() && getUserData(request.auth.uid).role == role;
+      return isSignedIn() && getUserData(request.auth.uid).role == role && getUserData(request.auth.uid).status == 'active';
     }
 
     function isAdmin() {
@@ -65,7 +65,9 @@ service cloud.firestore {
       }
 
       allow read: if isAdmin() || isAssignedTeacherForClass(resource.data.classId) || isOwner(resource.data.studentId);
-      allow create, delete: if isAdmin() || isAssignedTeacherForClass(request.resource.data.classId);
+      // CRITICAL SECURITY FIX: All membership mutations MUST go through the callable functions
+      // to ensure transactional integrity of studentCount and user.classIds.
+      allow create, delete: if false;
     }
 
     // Rules for 'lessons' collection (from Phase 4)

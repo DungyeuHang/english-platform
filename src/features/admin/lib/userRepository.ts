@@ -107,19 +107,6 @@ export async function getUserStats(): Promise<{
   };
 }
 
-export async function updateUserRole(uid: string, role: UserRole): Promise<UserProfile | null> {
-  const firestore = getFirestore();
-  if (!firestore) return null;
-
-  const userRef = doc(firestore, USERS_COLLECTION, uid);
-  await updateDoc(userRef, {
-    role,
-    updatedAt: serverTimestamp(),
-  });
-
-  return fetchUserProfile(uid);
-}
-
 export async function updateUserStatus(uid: string, status: UserStatus): Promise<UserProfile | null> {
   const firestore = getFirestore();
   if (!firestore) return null;
