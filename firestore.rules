@@ -70,6 +70,50 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+    // --- Course & Lesson Management ---
+
+    function isCourseOwner(courseId) {
+      let courseDoc = get(/databases/$(database)/documents/courses/$(courseId));
+      return isTeacher() && courseDoc.data.teacherId == request.auth.uid;
+    }
+
+    function isEnrolledInCourse(courseId) {
+      let courseDoc = get(/databases/$(database)/documents/courses/$(courseId));
+      let user = getUserData(request.auth.uid);
+      // A student is enrolled if the course is published and is assigned to any of the student's classes.
+      return courseDoc.data.status == 'published' && courseDoc.data.classIds.hasAny(user.classIds);
+    }
+
+    match /courses/{courseId} {
+      // Read: Admins, the owner teacher, or an enrolled student.
+      allow read: if isAdmin() || isCourseOwner(courseId) || isEnrolledInCourse(courseId);
+      // Write: Admins or teachers (for creating).
+      allow create: if isAdmin() || isTeacher();
+      // Update/Delete: Admins or the owner teacher.
+      allow update, delete: if isAdmin() || isCourseOwner(courseId);
+    }
+
+    match /modules/{moduleId} {
+      // Access is derived from the parent course.
+      allow read: if isAdmin() || isCourseOwner(resource.data.courseId) || isEnrolledInCourse(resource.data.courseId);
+      // Write access is granted to the course owner or an admin.
+      allow write: if isAdmin() || isCourseOwner(request.resource.data.courseId);
+    }
+
+    match /lessons/{lessonId} {
+      function getCourseIdFromLesson(lessonData) {
+        let moduleDoc = get(/databases/$(database)/documents/modules/$(lessonData.moduleId));
+        return moduleDoc.data.courseId;
+      }
+
+      // Access is derived from the parent course via the module.
+      allow read: if isAdmin() || isCourseOwner(getCourseIdFromLesson(resource.data)) || isEnrolledInCourse(getCourseIdFromLesson(resource.data));
+      // Write access is granted to the course owner or an admin.
+      allow write: if isAdmin() || isCourseOwner(getCourseIdFromLesson(request.resource.data));
+    }
+
+    // --- Legacy Lesson/Question Rules (Phase 4) ---
+
     // Rules for 'lessons' collection (from Phase 4)
     match /lessons/{lessonId} {
       function isAssignedTeacherForLesson(lessonData) {

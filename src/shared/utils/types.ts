@@ -56,6 +56,7 @@ export interface ClassProfile {
   updatedAt: Date | null;
   // Denormalized/computed fields for UI
   studentCount?: number;
+  courseIds?: string[];
   teacher?: UserProfile | null;
 }
 
@@ -64,6 +65,46 @@ export interface ClassMembership {
   classId: string;
   studentId: string;
   joinedAt: Date | null;
+}
+
+// --- Course & Lesson Management ---
+
+export type CourseLevel = 'beginner' | 'intermediate' | 'advanced';
+export type CourseStatus = 'draft' | 'published';
+
+export interface CourseProfile {
+  id: string;
+  title: string;
+  description: string;
+  level: CourseLevel;
+  thumbnail?: string | null;
+  teacherId: string;
+  classIds: string[];
+  status: CourseStatus;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
+export interface ModuleProfile {
+  id: string;
+  courseId: string;
+  title: string;
+  order: number;
+  description?: string | null;
+}
+
+export type LessonType = 'vocabulary' | 'grammar' | 'reading' | 'listening';
+
+export interface LessonProfile {
+  id: string;
+  moduleId: string;
+  title: string;
+  order: number;
+  type: LessonType;
+  content: string; // Markdown or structured content
+  status: CourseStatus; // 'draft' | 'published'
+  createdAt: Date | null;
+  updatedAt: Date | null;
 }
 
 export type LessonStatus = 'draft' | 'published' | 'archived';
